@@ -13,20 +13,23 @@ pub struct Glory {
 }
 
 impl Glory {
+    #[inline]
     pub fn new() -> Self {
         Self::build(String::new())
     }
 
+    #[inline]
     pub fn push(&mut self, str: &str) {
-        self.len += str.len();
+        self.len += str.chars().count();
         unsafe { (*self.last).data += str };
     }
 
+    #[inline]
     pub fn push_front(&mut self, str: &str) {
         let node = unsafe { &mut *self.head };
         let is_cur = self.head == self.cur;
 
-        if node.data.len() <= 300 {
+        if node.data.len() <= 200 {
             node.data.insert_str(0, str);
         } else {
             self.head = Node::new(str.into(), null_mut(), node);
@@ -38,9 +41,10 @@ impl Glory {
         }
 
         self.idx = Index::new();
-        self.len += str.len();
+        self.len += str.chars().count();
     }
 
+    #[inline]
     pub fn insert(&mut self, pos: usize, str: &str) {
         if str.len() == 0 {
             return;
@@ -56,7 +60,7 @@ impl Glory {
 
         let node = self.locate(pos);
 
-        self.len += str.len();
+        self.len += str.chars().count();
 
         if node.data.len() <= 200 {
             return node.data.insert_str(self.idx.local, str);
@@ -82,6 +86,7 @@ impl Glory {
         }
     }
 
+    #[inline]
     fn locate<'a>(&mut self, pos: usize) -> &'a mut Node {
         let [head, last, cur] = unsafe { [&mut *self.head, &mut *self.last, &mut *self.cur] };
         let idx = &mut self.idx;
@@ -131,6 +136,7 @@ impl Glory {
         node
     }
 
+    #[inline]
     fn build(data: String) -> Self {
         let len = data.len();
         let tmp = Node::new(data, null_mut(), null_mut());
@@ -147,12 +153,14 @@ impl Glory {
 }
 
 impl From<&str> for Glory {
+    #[inline]
     fn from(value: &str) -> Self {
         Self::build(value.into())
     }
 }
 
 impl Display for Glory {
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let mut buf = String::with_capacity(self.len);
         let mut tmp = unsafe { &*self.head };
@@ -178,6 +186,7 @@ struct Index {
 }
 
 impl Index {
+    #[inline]
     fn new() -> Self {
         Self { cur: 0, local: 0 }
     }
@@ -191,10 +200,12 @@ struct Node {
 }
 
 impl Node {
+    #[inline]
     fn new<'a>(data: String, prev: *mut Node, next: *mut Node) -> *mut Self {
         Box::into_raw(Box::new(Self { data, prev, next }))
     }
 
+    #[inline]
     fn has(&self, idx: &mut Index, pos: usize, rev: bool) -> bool {
         let rng = if rev {
             0..=idx.local
@@ -209,11 +220,12 @@ impl Node {
                     break;
                 }
 
+                idx.cur -= 1;
+
                 if idx.local == 0 {
                     break;
                 }
 
-                idx.cur -= 1;
                 idx.local -= c.len_utf8();
             }
         } else {
