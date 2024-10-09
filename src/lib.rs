@@ -1,6 +1,6 @@
 use std::{
     fmt::{Display, Formatter, Result},
-    ptr::{null, null_mut},
+    ptr::null_mut,
 };
 
 pub struct Glory {
@@ -46,43 +46,40 @@ impl Glory {
             return;
         }
 
-        // println!("{pos}");
+        if pos == 0 {
+            return self.push_front(str);
+        }
 
-        // if pos == 0 {
-        //     return self.push_front(str);
-        // }
-
-        // if pos == self.len {
-        //     return self.push(str);
-        // }
+        if pos == self.len {
+            return self.push(str);
+        }
 
         let node = self.locate(pos);
 
-        // if node.data.len() <= 200 && false {
-        //     return node.data.insert_str(self.idx.local, str);
-        // }
+        self.len += str.len();
+
+        if node.data.len() <= 200 {
+            return node.data.insert_str(self.idx.local, str);
+        }
 
         let data = node.data.split_off(self.idx.local);
 
         node.data += str;
 
         if data.len() != 0 {
-            // self.idx.local -= 1;
-            // println!("{} {} {}", node.data.len(), data.len(), self.idx.local);
-            node.next = Node::new(data, node, node.next);
-            // Try resetting it regardless of value if UB
+            let tmp = Node::new(data, node, node.next);
+
+            if let Some(node) = unsafe { node.next.as_mut() } {
+                node.prev = tmp
+            }
+
+            node.next = tmp;
+
             if self.is_last {
+                self.last = tmp;
                 self.is_last = false;
-                self.last = node.next;
             }
         }
-
-        // if node.data.is_empty() || lol == 0 {
-        //     println!("{self}\n{} {}", node.data.len(), lol);
-        //     panic!()
-        // }
-
-        self.len += str.len();
     }
 
     fn locate<'a>(&mut self, pos: usize) -> &'a mut Node {
@@ -103,41 +100,26 @@ impl Glory {
         ];
         let mut node = if pos < b {
             if pos < a {
-                // print!("head");
                 idx.local = 0;
                 idx.cur = 0;
                 rev = false;
                 head
             } else {
-                // print!("cur");
                 cur
             }
         } else {
             if b < a {
-                // println!("{:?} | {:?} | {:?} | {pos}", head, cur, last);
                 idx.local = last.data.len() - 1;
                 idx.cur = self.len - 1;
                 rev = true;
-                // print!("last");
                 last
             } else {
-                // print!("cur");
                 cur
             }
         };
 
-        // println!(" {rev} {:?} {:?} [{pos}, {a}, {b}]", node, idx);
-
-        if pos == 283 {
-            println!("{:?}", idx)
-        }
         while !node.has(idx, pos, rev) {
             let tmp = if rev { node.prev } else { node.next };
-
-            if tmp.is_null() {
-                println!("{self}\n{:?}", self.idx);
-                panic!("logic error");
-            }
 
             node = unsafe { &mut *tmp };
             idx.local = if rev { node.data.len() - 1 } else { 0 }
@@ -145,8 +127,6 @@ impl Glory {
 
         self.cur = node;
         self.is_last = self.cur == self.last;
-
-        // println!("{:?} {:?}", idx, node);
 
         node
     }
@@ -177,33 +157,7 @@ impl Display for Glory {
         let mut buf = String::with_capacity(self.len);
         let mut tmp = unsafe { &*self.head };
 
-        println!(
-            "head {:?} | cur {:?} | last {:?} | {:?}",
-            self.head, self.cur, self.last, self.idx
-        );
-        let mut lol = null();
-
         loop {
-            print!(
-                "-> {:?} | {:?} | {:?}",
-                tmp as *const Node,
-                tmp.data.len(),
-                lol == tmp.prev
-            );
-            let ptr = tmp as *const Node;
-
-            let typ = if ptr == self.head {
-                "(head)"
-            } else if ptr == self.cur {
-                "(cur)"
-            } else if ptr == self.last {
-                "(last)"
-            } else {
-                ""
-            };
-            println!(" {typ}");
-            lol = ptr;
-
             buf += &tmp.data;
 
             if tmp.next.is_null() {
@@ -212,8 +166,6 @@ impl Display for Glory {
 
             tmp = unsafe { &*tmp.next }
         }
-
-        buf.clear();
 
         write!(f, "{buf}")
     }
@@ -244,33 +196,24 @@ impl Node {
     }
 
     fn has(&self, idx: &mut Index, pos: usize, rev: bool) -> bool {
-        if pos == idx.cur {
-            return true;
-        }
-
         let rng = if rev {
             0..=idx.local
         } else {
             idx.local..=self.data.len() - 1
         };
-        // println!("{:?}", rng);
         let iter = self.data[rng].chars();
 
         if rev {
-            // println!("(has) {:?}", idx);
             for c in iter.rev() {
                 if idx.cur == pos {
                     break;
                 }
 
-                // if idx.local == 0 {
-                //     break;
-                // }
-
-                idx.cur -= 1;
                 if idx.local == 0 {
                     break;
                 }
+
+                idx.cur -= 1;
                 idx.local -= c.len_utf8();
             }
         } else {
