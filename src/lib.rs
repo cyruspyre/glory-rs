@@ -1,6 +1,6 @@
 use std::{
     fmt::{Display, Formatter, Result},
-    ptr::null_mut,
+    ptr::{null, null_mut},
 };
 
 pub struct Glory {
@@ -66,8 +66,6 @@ impl Glory {
 
         node.data += str;
 
-        let lol = data.len();
-
         if data.len() != 0 {
             // self.idx.local -= 1;
             // println!("{} {} {}", node.data.len(), data.len(), self.idx.local);
@@ -94,6 +92,9 @@ impl Glory {
         let [a, b] = [
             if idx.cur > pos {
                 rev = true;
+                if idx.local >= cur.data.len() {
+                    idx.local = cur.data.len() - 1;
+                }
                 idx.cur - pos
             } else {
                 pos - idx.cur
@@ -102,13 +103,13 @@ impl Glory {
         ];
         let mut node = if pos < b {
             if pos < a {
-                print!("head");
+                // print!("head");
                 idx.local = 0;
                 idx.cur = 0;
                 rev = false;
                 head
             } else {
-                print!("cur");
+                // print!("cur");
                 cur
             }
         } else {
@@ -117,21 +118,24 @@ impl Glory {
                 idx.local = last.data.len() - 1;
                 idx.cur = self.len - 1;
                 rev = true;
-                print!("last");
+                // print!("last");
                 last
             } else {
-                print!("cur");
+                // print!("cur");
                 cur
             }
         };
-        self.is_last = self.cur == self.last;
 
-        println!(" {rev} {:?} {:?} [{pos}, {a}, {b}]", node, idx);
+        // println!(" {rev} {:?} {:?} [{pos}, {a}, {b}]", node, idx);
 
+        if pos == 283 {
+            println!("{:?}", idx)
+        }
         while !node.has(idx, pos, rev) {
             let tmp = if rev { node.prev } else { node.next };
 
             if tmp.is_null() {
+                println!("{self}\n{:?}", self.idx);
                 panic!("logic error");
             }
 
@@ -140,8 +144,9 @@ impl Glory {
         }
 
         self.cur = node;
+        self.is_last = self.cur == self.last;
 
-        println!("{:?} {:?}", idx, node);
+        // println!("{:?} {:?}", idx, node);
 
         node
     }
@@ -176,9 +181,29 @@ impl Display for Glory {
             "head {:?} | cur {:?} | last {:?} | {:?}",
             self.head, self.cur, self.last, self.idx
         );
+        let mut lol = null();
 
         loop {
-            println!("-> {:?} | {:?}", tmp as *const Node, tmp.data);
+            print!(
+                "-> {:?} | {:?} | {:?}",
+                tmp as *const Node,
+                tmp.data.len(),
+                lol == tmp.prev
+            );
+            let ptr = tmp as *const Node;
+
+            let typ = if ptr == self.head {
+                "(head)"
+            } else if ptr == self.cur {
+                "(cur)"
+            } else if ptr == self.last {
+                "(last)"
+            } else {
+                ""
+            };
+            println!(" {typ}");
+            lol = ptr;
+
             buf += &tmp.data;
 
             if tmp.next.is_null() {
@@ -187,6 +212,8 @@ impl Display for Glory {
 
             tmp = unsafe { &*tmp.next }
         }
+
+        buf.clear();
 
         write!(f, "{buf}")
     }
@@ -230,6 +257,7 @@ impl Node {
         let iter = self.data[rng].chars();
 
         if rev {
+            // println!("(has) {:?}", idx);
             for c in iter.rev() {
                 if idx.cur == pos {
                     break;
@@ -240,6 +268,9 @@ impl Node {
                 // }
 
                 idx.cur -= 1;
+                if idx.local == 0 {
+                    break;
+                }
                 idx.local -= c.len_utf8();
             }
         } else {
